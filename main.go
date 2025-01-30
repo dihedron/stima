@@ -4,18 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/dihedron/stima/version"
 	"github.com/fatih/color"
-	"github.com/jessevdk/go-flags"
 )
 
 type Options struct {
-	Input *string `short:"i" long:"input" description:"The inline chunk of text to be used as input or a @file path." optional:"yes"`
 }
 
 type category struct {
@@ -87,9 +84,9 @@ var categories = []category{
 	{
 		key: "Impegno, competenza, managerialità",
 		regexes: []*regexp.Regexp{
-			regexp.MustCompile(`(?i)\sdot[e|i] managerial(e|i)`),
-			regexp.MustCompile(`(?i)\scapacit[à|a'] organizzativ(a|e)`),
-			regexp.MustCompile(`(?i)\scompetenz(a|e)] tecnic[a|he]`),
+			regexp.MustCompile(`(?i)\sdot(e|i) managerial(e|i)`),
+			regexp.MustCompile(`(?i)\scapacit(à|a') organizzativ(a|e)`),
+			regexp.MustCompile(`(?i)\scompetenz(a|e) tecnic(a|he)`),
 		},
 		help:  []string{"dot* managerial*", "capacità organizzativ*", "competenz* tecnic*"},
 		color: color.New(color.FgBlue).SprintFunc(),
@@ -114,27 +111,13 @@ func main() {
 		}
 	}
 
-	options := Options{}
-	// Parse flags from `args'. Note that here we use flags.ParseArgs for
-	// the sake of making a working example. Normally, you would simply use
-	// flags.Parse(&opts) which uses os.Args
-	_, err := flags.Parse(&options)
-	if err != nil {
-		slog.Error("error parsing command line", "error", err)
-		panic(err)
-	}
-
-	slog.Debug("command line parsed", "options", options)
-
 	var input io.Reader
-	if options.Input == nil {
+	if len(os.Args) == 1 {
 		input = os.Stdin
 	} else {
-		if strings.HasPrefix(*options.Input, "@") {
-			*options.Input = strings.TrimPrefix(*options.Input, "@")
-		}
-		if file, err := os.Open(*options.Input); err != nil {
-			panic(err)
+		if file, err := os.Open(os.Args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "cannot open %s: %v\n", os.Args[1], err)
+			os.Exit(1)
 		} else {
 			defer file.Close()
 			input = file
@@ -143,7 +126,8 @@ func main() {
 
 	d, err := io.ReadAll(input)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "error reading file: %v\n", err)
+		os.Exit(1)
 	}
 
 	data := string(d)
