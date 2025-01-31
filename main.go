@@ -76,9 +76,9 @@ var categories = []category{
 			regexp.MustCompile(`(?i)\sottim(o|a|i|e)`),
 			regexp.MustCompile(`(?i)\sfondamental(e|i)`),
 			regexp.MustCompile(`(?i)\sdeterminant(e|i)`),
-			regexp.MustCompile(`(?i)\sapprezzabil(e|i)`),
+			//regexp.MustCompile(`(?i)\sapprezzabil(e|i)`),
 		},
-		help:  []string{"significativ*", "notevol*", "considerevol*", "fort*", "elevat*", "rilevant*", "ottim*", "fondamental*", "determinant*", "apprezzabil*"},
+		help:  []string{"significativ*", "notevol*", "considerevol*", "fort*", "elevat*", "rilevant*", "ottim*", "fondamental*", "determinant*"},
 		color: color.New(color.FgGreen).SprintFunc(),
 	},
 	{
@@ -111,58 +111,68 @@ func main() {
 		}
 	}
 
-	var input io.Reader
+	var inputs []io.Reader
 	if len(os.Args) == 1 {
-		input = os.Stdin
+		inputs = append(inputs, os.Stdin)
 	} else {
-		if file, err := os.Open(os.Args[1]); err != nil {
-			fmt.Fprintf(os.Stderr, "cannot open %s: %v\n", os.Args[1], err)
-			os.Exit(1)
-		} else {
-			defer file.Close()
-			input = file
-		}
-	}
-
-	d, err := io.ReadAll(input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error reading file: %v\n", err)
-		os.Exit(1)
-	}
-
-	data := string(d)
-
-	var buffer bytes.Buffer
-	for i, category := range categories {
-		for _, regex := range category.regexes {
-			matches := regex.FindAllStringIndex(data, -1)
-			index := 0
-			if matches != nil {
-				for _, match := range matches {
-					categories[i].count = categories[i].count + 1
-					buffer.WriteString(data[index:match[0]])
-					if strings.Contains(data[match[0]:match[1]], " ") {
-						tokens := strings.Split(data[match[0]:match[1]], " ")
-						for i, token := range tokens {
-							tokens[i] = category.color(token)
-						}
-						buffer.WriteString(strings.Join(tokens, " "))
-					} else {
-						buffer.WriteString(category.color(data[match[0]:match[1]]))
-					}
-					index = match[1]
-				}
-				buffer.WriteString(data[index:])
-				data = buffer.String()
-				buffer.Reset()
+		for _, arg := range os.Args[1:] {
+			if file, err := os.Open(arg); err != nil {
+				fmt.Fprintf(os.Stderr, "cannot open %s: %v\n", arg, err)
+				os.Exit(1)
+			} else {
+				defer file.Close()
+				inputs = append(inputs, file)
 			}
 		}
+
+		for _, input := range inputs {
+			d, err := io.ReadAll(input)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error reading file: %v\n", err)
+				os.Exit(1)
+			}
+
+			data := strings.TrimSpace(string(d))
+
+			var buffer bytes.Buffer
+			for i, category := range categories {
+				for _, regex := range category.regexes {
+					matches := regex.FindAllStringIndex(data, -1)
+					index := 0
+					if matches != nil {
+						for _, match := range matches {
+							categories[i].count = categories[i].count + 1
+							buffer.WriteString(data[index:match[0]])
+							if strings.Contains(data[match[0]:match[1]], " ") {
+								tokens := strings.Split(data[match[0]:match[1]], " ")
+								for i, token := range tokens {
+									tokens[i] = category.color(token)
+								}
+								buffer.WriteString(strings.Join(tokens, " "))
+							} else {
+								buffer.WriteString(category.color(data[match[0]:match[1]]))
+							}
+							index = match[1]
+						}
+						buffer.WriteString(data[index:])
+						data = buffer.String()
+						buffer.Reset()
+					}
+				}
+			}
+			fmt.Println("----------------------------------------------------------------")
+			fmt.Println()
+			fmt.Printf("%s", data)
+			fmt.Println()
+			fmt.Println()
+			for i := len(categories) - 1; i >= 0; i-- {
+				fmt.Printf("  %s: %d\n", categories[i].color(categories[i].key), categories[i].count)
+				categories[i].count = 0
+			}
+			fmt.Println()
+		}
+		fmt.Println("----------------------------------------------------------------")
 	}
-	for i := len(categories) - 1; i >= 0; i-- {
-		fmt.Printf("%s: %d\n", categories[i].color(categories[i].key), categories[i].count)
-	}
-	fmt.Printf("----------------------------------------------------------------\n")
-	fmt.Printf("%s", data)
 }
 
 func valueIn(value string, values ...string) bool {
