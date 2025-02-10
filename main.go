@@ -95,6 +95,14 @@ var categories = []category{
 
 func main() {
 
+	if len(os.Args) == 1 || valueIn(os.Args[1], "help", "-help", "--help", "?", "/?", "/h") {
+		fmt.Println("usage:")
+		fmt.Println("   stima <file.txt>...   analyse one (or more) files")
+		fmt.Println("   stima explain         show all estimation criteria")
+		fmt.Println("   stima version         show version and exit")
+		os.Exit(0)
+	}
+
 	if len(os.Args) == 2 {
 		if valueIn(os.Args[1], "version", "-version", "--version", "ver", "-ver", "--ver", "v", "-v", "--v") {
 			version.Print(os.Stdout)
